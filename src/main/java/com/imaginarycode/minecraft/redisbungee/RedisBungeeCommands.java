@@ -2,6 +2,7 @@ package com.imaginarycode.minecraft.redisbungee;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.CommandSender;
@@ -15,6 +16,7 @@ import java.net.InetAddress;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
+import net.md_5.bungee.api.plugin.TabExecutor;
 
 /**
  * This class contains subclasses that are used for the commands RedisBungee overrides or includes: /glist, /find and /lastseen.
@@ -36,7 +38,7 @@ class RedisBungeeCommands {
         return num == 1 ? num + " Spieler ist" : num + " Spieler sind";
     }
 
-    public static class GlistCommand extends Command {
+    public static class GlistCommand extends Command implements TabExecutor {
         private final RedisBungee plugin;
 
         GlistCommand(RedisBungee plugin) {
@@ -77,9 +79,15 @@ class RedisBungeeCommands {
                 }
             });
         }
+
+        @Override
+        public Iterable<String> onTabComplete(CommandSender commandSender, String[] strings) {
+            return strings.length > 1 ? Collections.emptyList() : Collections.singletonList("showall");
+        }
+
     }
 
-    public static class FindCommand extends Command {
+    public static class FindCommand extends Command implements TabExecutor {
         private final RedisBungee plugin;
 
         FindCommand(RedisBungee plugin) {
@@ -113,6 +121,12 @@ class RedisBungeeCommands {
                 }
             });
         }
+
+        @Override
+        public Iterable<String> onTabComplete(CommandSender commandSender, String[] strings) {
+            return strings.length > 1 ? Collections.emptyList() : RedisBungeeAPI.getRedisBungeeApi().getHumanPlayersOnline();
+        }
+
     }
 
     public static class LastSeenCommand extends Command {
@@ -152,7 +166,7 @@ class RedisBungeeCommands {
         }
     }
 
-    public static class IpCommand extends Command {
+    public static class IpCommand extends Command implements TabExecutor {
         private final RedisBungee plugin;
 
         IpCommand(RedisBungee plugin) {
@@ -183,9 +197,15 @@ class RedisBungeeCommands {
                 }
             });
         }
+
+        @Override
+        public Iterable<String> onTabComplete(CommandSender commandSender, String[] strings) {
+            return strings.length > 1 ? Collections.emptyList() : RedisBungeeAPI.getRedisBungeeApi().getHumanPlayersOnline();
+        }
+
     }
 
-    public static class PlayerProxyCommand extends Command {
+    public static class PlayerProxyCommand extends Command implements TabExecutor {
         private final RedisBungee plugin;
 
         PlayerProxyCommand(RedisBungee plugin) {
@@ -216,6 +236,12 @@ class RedisBungeeCommands {
                 }
             });
         }
+
+        @Override
+        public Iterable<String> onTabComplete(CommandSender commandSender, String[] strings) {
+            return strings.length > 1 ? Collections.emptyList() : RedisBungeeAPI.getRedisBungeeApi().getHumanPlayersOnline();
+        }
+
     }
 
     public static class SendToAll extends Command {
@@ -270,9 +296,10 @@ class RedisBungeeCommands {
             textComponent.setColor(ChatColor.YELLOW);
             sender.sendMessage(textComponent);
         }
+
     }
 
-    public static class PlistCommand extends Command {
+    public static class PlistCommand extends Command implements TabExecutor {
         private final RedisBungee plugin;
 
         PlistCommand(RedisBungee plugin) {
@@ -318,6 +345,14 @@ class RedisBungeeCommands {
                 }
             });
         }
+
+        @Override
+        public Iterable<String> onTabComplete(CommandSender commandSender, String[] strings) {
+            return strings.length > 1 ?
+                (strings.length > 2 ?  Collections.emptyList() : Collections.singletonList("showall")) :
+                RedisBungeeAPI.getRedisBungeeApi().getAllServers();
+        }
+
     }
 
     public static class DebugCommand extends Command {
