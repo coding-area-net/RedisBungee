@@ -22,7 +22,11 @@ server-id: "proxy"
 # or if id is limework-bungee it will be "limework-bungee-66cd2aeb-91f3-43a7-a106-e0307b098652"
 # this great for servers who run replicas in Kubernetes or any auto deploying replica service
 # and used for if proxy died in a kubernetes network and deleted then new proxy setup itself.
-use-random-id-string: true
+use-random-id-string: false
+
+# Uses the cloudnet specific name instead of configured server-id.
+# Overrides use of use-random-id-string.
+use-cloudnet-name: true
 
 # Whether or not RedisBungee should install its version of regular BungeeCord commands.
 # Often, the RedisBungee commands are desired, but in some cases someone may wish to

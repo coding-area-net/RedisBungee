@@ -2,13 +2,13 @@ package com.imaginarycode.minecraft.redisbungee;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.net.InetAddresses;
+import de.dytanic.cloudnet.wrapper.Wrapper;
 import lombok.Getter;
 import net.md_5.bungee.config.Configuration;
 import redis.clients.jedis.JedisPool;
 
 import java.net.InetAddress;
 import java.util.List;
-import java.util.UUID;
 
 public class RedisBungeeConfiguration {
 
@@ -25,10 +25,14 @@ public class RedisBungeeConfiguration {
     public RedisBungeeConfiguration(JedisPool pool, Configuration configuration, String randomUUID) {
         this.pool = pool;
 
-        if (configuration.getBoolean("use-random-id-string", false)) {
-            this.serverId = configuration.getString("server-id") + "-" + randomUUID;
+        if (configuration.getBoolean("use-cloudnet-name", false)) {
+            this.serverId = Wrapper.getInstance().getServiceId().getName();
         } else {
-            this.serverId = configuration.getString("server-id");
+            if (configuration.getBoolean("use-random-id-string", false)) {
+                this.serverId = configuration.getString("server-id") + "-" + randomUUID;
+            } else {
+                this.serverId = configuration.getString("server-id");
+            }
         }
 
         this.registerBungeeCommands = configuration.getBoolean("register-bungee-commands", true);
