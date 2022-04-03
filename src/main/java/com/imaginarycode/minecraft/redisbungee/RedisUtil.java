@@ -27,7 +27,7 @@ public class RedisUtil {
         playerData.put("ip", connection.getAddress().getAddress().getHostAddress());
         playerData.put("proxy", RedisBungee.getConfiguration().getServerId());
 
-        pipeline.sadd("proxy:" + RedisBungee.getApi().getServerId() + ":usersOnline", connection.getUniqueId().toString());
+        pipeline.sadd("proxy:" + RedisBungeeAPI.getRedisBungeeApi().getServerId() + ":usersOnline", connection.getUniqueId().toString());
         pipeline.hmset("player:" + connection.getUniqueId().toString(), playerData);
 
         if (fireEvent) {
@@ -38,7 +38,7 @@ public class RedisUtil {
     }
 
     public static void cleanUpPlayer(String player, Jedis rsc) {
-        rsc.srem("proxy:" + RedisBungee.getApi().getServerId() + ":usersOnline", player);
+        rsc.srem("proxy:" + RedisBungeeAPI.getRedisBungeeApi().getServerId() + ":usersOnline", player);
         rsc.hdel("player:" + player, "server", "ip", "proxy");
         long timestamp = System.currentTimeMillis();
         rsc.hset("player:" + player, "online", String.valueOf(timestamp));
@@ -48,7 +48,7 @@ public class RedisUtil {
     }
 
     public static void cleanUpPlayer(String player, Pipeline rsc) {
-        rsc.srem("proxy:" + RedisBungee.getApi().getServerId() + ":usersOnline", player);
+        rsc.srem("proxy:" + RedisBungeeAPI.getRedisBungeeApi().getServerId() + ":usersOnline", player);
         rsc.hdel("player:" + player, "server", "ip", "proxy");
         long timestamp = System.currentTimeMillis();
         rsc.hset("player:" + player, "online", String.valueOf(timestamp));

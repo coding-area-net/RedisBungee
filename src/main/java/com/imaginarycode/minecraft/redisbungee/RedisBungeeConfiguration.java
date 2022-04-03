@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.UUID;
 
 public class RedisBungeeConfiguration {
+
     @Getter
     private final JedisPool pool;
     @Getter
@@ -23,6 +24,7 @@ public class RedisBungeeConfiguration {
 
     public RedisBungeeConfiguration(JedisPool pool, Configuration configuration, String randomUUID) {
         this.pool = pool;
+
         if (configuration.getBoolean("use-random-id-string", false)) {
             this.serverId = configuration.getString("server-id") + "-" + randomUUID;
         } else {
@@ -31,12 +33,11 @@ public class RedisBungeeConfiguration {
 
         this.registerBungeeCommands = configuration.getBoolean("register-bungee-commands", true);
 
-        List<String> stringified = configuration.getStringList("exempt-ip-addresses");
         ImmutableList.Builder<InetAddress> addressBuilder = ImmutableList.builder();
 
-        for (String s : stringified) {
-            addressBuilder.add(InetAddresses.forString(s));
-        }
+        configuration.getStringList("exempt-ip-addresses")
+                .forEach(s -> addressBuilder.add(InetAddresses.forString(s)));
+
 
         this.exemptAddresses = addressBuilder.build();
     }

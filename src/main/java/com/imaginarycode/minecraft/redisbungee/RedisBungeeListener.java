@@ -30,13 +30,13 @@ import java.util.*;
 @AllArgsConstructor
 public class RedisBungeeListener implements Listener {
     private static final BaseComponent[] ALREADY_LOGGED_IN =
-            new ComponentBuilder("You are already logged on to this server.").color(ChatColor.RED)
-                    .append("\n\nIt may help to try logging in again in a few minutes.\nIf this does not resolve your issue, please contact staff.")
+            new ComponentBuilder("Sie sind bereits auf diesem Server eingeloggt.").color(ChatColor.RED)
+                    .append("\n\nVersuchen Sie bitte, sich in ein paar Minuten erneut anzumelden.\n Wenn dies Ihr Problem nicht behebt, wenden Sie sich bitte an das Personal.")
                     .color(ChatColor.GRAY)
                     .create();
     private static final BaseComponent[] ONLINE_MODE_RECONNECT =
-            new ComponentBuilder("Whoops! You need to reconnect.").color(ChatColor.RED)
-                    .append("\n\nWe found someone online using your username. They were kicked and you may reconnect.\nIf this does not work, please contact staff.")
+            new ComponentBuilder("Huch! Du musst die Verbindung wiederherstellen.").color(ChatColor.RED)
+                    .append("\n\nWir haben jemanden gefunden, der deinen Benutzernamen benutzt. Er wurde rausgeschmissen und Du kannst dich wieder einloggen.\n Wenn dies nicht funktioniert, wenden Sie sich bitte an das Personal.")
                     .color(ChatColor.GRAY)
                     .create();
     private final RedisBungee plugin;
@@ -170,7 +170,7 @@ public class RedisBungeeListener implements Listener {
                             original = plugin.getPlayers();
                         } else {
                             try {
-                                original = RedisBungee.getApi().getPlayersOnServer(type);
+                                original = RedisBungeeAPI.getRedisBungeeApi().getPlayersOnServer(type);
                             } catch (IllegalArgumentException ignored) {
                             }
                         }
@@ -188,7 +188,7 @@ public class RedisBungeeListener implements Listener {
                         } else {
                             out.writeUTF(type);
                             try {
-                                out.writeInt(RedisBungee.getApi().getPlayersOnServer(type).size());
+                                out.writeInt(RedisBungeeAPI.getRedisBungeeApi().getPlayersOnServer(type).size());
                             } catch (IllegalArgumentException e) {
                                 out.writeInt(0);
                             }
@@ -198,12 +198,12 @@ public class RedisBungeeListener implements Listener {
                         String user = in.readUTF();
                         out.writeUTF("LastOnline");
                         out.writeUTF(user);
-                        out.writeLong(RedisBungee.getApi().getLastOnline(plugin.getUuidTranslator().getTranslatedUuid(user, true)));
+                        out.writeLong(RedisBungeeAPI.getRedisBungeeApi().getLastOnline(plugin.getUuidTranslator().getTranslatedUuid(user, true)));
                         break;
                     case "ServerPlayers":
                         String type1 = in.readUTF();
                         out.writeUTF("ServerPlayers");
-                        Multimap<String, UUID> multimap = RedisBungee.getApi().getServerToPlayers();
+                        Multimap<String, UUID> multimap = RedisBungeeAPI.getRedisBungeeApi().getServerToPlayers();
 
                         boolean includesUsers;
 
@@ -239,7 +239,7 @@ public class RedisBungeeListener implements Listener {
                         String username = in.readUTF();
                         out.writeUTF("PlayerProxy");
                         out.writeUTF(username);
-                        out.writeUTF(RedisBungee.getApi().getProxy(plugin.getUuidTranslator().getTranslatedUuid(username, true)));
+                        out.writeUTF(RedisBungeeAPI.getRedisBungeeApi().getProxy(plugin.getUuidTranslator().getTranslatedUuid(username, true)));
                         break;
                     default:
                         return;
@@ -280,11 +280,11 @@ public class RedisBungeeListener implements Listener {
 
     @EventHandler
     public void onPubSubMessage(PubSubMessageEvent event) {
-        if (event.getChannel().equals("redisbungee-allservers") || event.getChannel().equals("redisbungee-" + RedisBungee.getApi().getServerId())) {
+        if (event.getChannel().equals("redisbungee-allservers") || event.getChannel().equals("redisbungee-" + RedisBungeeAPI.getRedisBungeeApi().getServerId())) {
             String message = event.getMessage();
             if (message.startsWith("/"))
                 message = message.substring(1);
-            plugin.getLogger().info("Invoking command via PubSub: /" + message);
+            plugin.getLogger().info("Aufrufen eines PubSub Befehls: /" + message);
             plugin.getProxy().getPluginManager().dispatchCommand(RedisBungeeCommandSender.instance, message);
         }
     }

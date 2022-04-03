@@ -1,5 +1,7 @@
 package com.imaginarycode.minecraft.redisbungee.events;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import lombok.ToString;
 import net.md_5.bungee.api.plugin.Event;
 
@@ -14,15 +16,9 @@ import java.util.UUID;
  *
  * @since 0.3.4
  */
+@Getter
 @ToString
+@AllArgsConstructor
 public class PlayerLeftNetworkEvent extends Event {
     private final UUID uuid;
-
-    public PlayerLeftNetworkEvent(UUID uuid) {
-        this.uuid = uuid;
-    }
-
-    public UUID getUuid() {
-        return uuid;
-    }
 }

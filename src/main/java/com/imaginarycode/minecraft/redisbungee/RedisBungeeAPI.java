@@ -10,6 +10,7 @@ import redis.clients.jedis.JedisPool;
 
 import java.net.InetAddress;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * This class exposes some internal RedisBungee functions. You obtain an instance of this object by invoking {@link RedisBungee#getApi()}.
@@ -84,11 +85,7 @@ public class RedisBungeeAPI {
      * @since 0.3
      */
     public final Collection<String> getHumanPlayersOnline() {
-        Set<String> names = new HashSet<>();
-        for (UUID uuid : getPlayersOnline()) {
-            names.add(getNameFromUuid(uuid, false));
-        }
-        return names;
+        return getPlayersOnline().stream().map(uuid -> getNameFromUuid(uuid, false)).collect(Collectors.toSet());
     }
 
     /**

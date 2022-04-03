@@ -14,6 +14,7 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class NameFetcher {
@@ -29,13 +30,10 @@ public class NameFetcher {
 
         Type listType = new TypeToken<List<Name>>() {
         }.getType();
+
         List<Name> names = RedisBungee.getGson().fromJson(response, listType);
 
-        List<String> humanNames = new ArrayList<>();
-        for (Name name : names) {
-            humanNames.add(name.name);
-        }
-        return humanNames;
+        return names.stream().map(name -> name.name).collect(Collectors.toList());
     }
 
     public static class Name {
