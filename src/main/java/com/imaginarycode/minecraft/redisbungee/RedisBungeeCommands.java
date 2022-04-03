@@ -33,8 +33,7 @@ class RedisBungeeCommands {
             new ComponentBuilder("Du musst einen Befehl angeben, der ausgeführt werden soll.").color(ChatColor.RED).create();
 
     private static String playerPlural(int num) {
-        return num + " Spieler sind";
-        //return num == 1 ? num + " player is" : num + " players are";
+        return num == 1 ? num + " Spieler ist" : num + " Spieler sind";
     }
 
     public static class GlistCommand extends Command {
