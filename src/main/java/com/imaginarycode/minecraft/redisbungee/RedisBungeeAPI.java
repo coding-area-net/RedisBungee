@@ -5,6 +5,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
 import lombok.NonNull;
+import net.md_5.bungee.api.chat.BaseComponent;
 import net.md_5.bungee.api.config.ServerInfo;
 import redis.clients.jedis.JedisPool;
 
@@ -172,6 +173,14 @@ public class RedisBungeeAPI {
      */
     public final void sendProxyCommand(@NonNull String proxyId, @NonNull String command) {
         plugin.sendProxyCommand(proxyId, command);
+    }
+
+    public final void broadcastMessage(@NonNull BaseComponent... message) {
+        plugin.broadcastMessage(message);
+    }
+
+    public final void sendChatMessage(@NonNull UUID uuid, @NonNull BaseComponent... message) {
+        plugin.sendChatMessage(uuid, message);
     }
 
     /**

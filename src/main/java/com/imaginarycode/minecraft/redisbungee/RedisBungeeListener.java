@@ -12,15 +12,20 @@ import com.imaginarycode.minecraft.redisbungee.util.RedisCallable;
 import lombok.AllArgsConstructor;
 import net.md_5.bungee.api.AbstractReconnectHandler;
 import net.md_5.bungee.api.ChatColor;
+import net.md_5.bungee.api.ProxyServer;
 import net.md_5.bungee.api.chat.BaseComponent;
 import net.md_5.bungee.api.chat.ComponentBuilder;
+import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.api.config.ServerInfo;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 import net.md_5.bungee.api.connection.Server;
 import net.md_5.bungee.api.event.*;
 import net.md_5.bungee.api.plugin.Listener;
+import net.md_5.bungee.api.plugin.Plugin;
+import net.md_5.bungee.chat.ComponentSerializer;
 import net.md_5.bungee.event.EventHandler;
 import net.md_5.bungee.event.EventPriority;
+import org.json.JSONObject;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Pipeline;
 
@@ -280,12 +285,35 @@ public class RedisBungeeListener implements Listener {
 
     @EventHandler
     public void onPubSubMessage(PubSubMessageEvent event) {
-        if (event.getChannel().equals("redisbungee-allservers") || event.getChannel().equals("redisbungee-" + RedisBungeeAPI.getRedisBungeeApi().getServerId())) {
+        String channel = event.getChannel();
+        if (channel.equals("redisbungee-command-allservers") || channel.equals("redisbungee-command-" + RedisBungeeAPI.getRedisBungeeApi().getServerId())) {
             String message = event.getMessage();
             if (message.startsWith("/"))
                 message = message.substring(1);
             plugin.getLogger().info("Aufrufen eines PubSub Befehls: /" + message);
             plugin.getProxy().getPluginManager().dispatchCommand(RedisBungeeCommandSender.instance, message);
+        } else if (channel.equals("redisbungee-message-allservers") || channel.equals("redisbungee-message-" + RedisBungeeAPI.getRedisBungeeApi().getServerId())) {
+            plugin.getLogger().info("Receiving pub chat message");
+
+            JSONObject jsonObject = new JSONObject(event.getMessage());
+            ProxiedPlayer receiver = null;
+            if (jsonObject.has("receiver")) {
+                UUID uuid = UUID.fromString(jsonObject.getString("receiver"));
+                receiver = ProxyServer.getInstance().getPlayer(uuid);
+                if (receiver == null) {
+                    return; // Player not on this proxy
+                }
+            }
+
+            String rawMessage = jsonObject.getString("message");
+            BaseComponent[] components = ComponentSerializer.parse(rawMessage);
+
+            if (receiver == null) {
+                ProxyServer.getInstance().broadcast(components);
+            } else {
+                receiver.sendMessage(components);
+            }
+
         }
     }
 }

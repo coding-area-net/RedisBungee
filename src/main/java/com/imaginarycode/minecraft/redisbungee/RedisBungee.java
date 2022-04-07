@@ -2,11 +2,17 @@ package com.imaginarycode.minecraft.redisbungee;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import com.google.common.collect.*;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMultimap;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Multimap;
 import com.google.common.io.ByteStreams;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
 import com.imaginarycode.minecraft.redisbungee.events.PubSubMessageEvent;
-import com.imaginarycode.minecraft.redisbungee.util.*;
+import com.imaginarycode.minecraft.redisbungee.util.IOUtil;
+import com.imaginarycode.minecraft.redisbungee.util.LuaManager;
 import com.imaginarycode.minecraft.redisbungee.util.uuid.NameFetcher;
 import com.imaginarycode.minecraft.redisbungee.util.uuid.UUIDFetcher;
 import com.imaginarycode.minecraft.redisbungee.util.uuid.UUIDTranslator;
@@ -17,8 +23,11 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import net.md_5.bungee.api.ProxyServer;
+import net.md_5.bungee.api.chat.BaseComponent;
+import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 import net.md_5.bungee.api.plugin.Plugin;
+import net.md_5.bungee.chat.ComponentSerializer;
 import net.md_5.bungee.config.Configuration;
 import net.md_5.bungee.config.ConfigurationProvider;
 import net.md_5.bungee.config.YamlConfiguration;
@@ -205,10 +214,36 @@ public final class RedisBungee extends Plugin {
 
     void sendProxyCommand(@NonNull String proxyId, @NonNull String command) {
         checkArgument(getServerIds().contains(proxyId) || proxyId.equals("allservers"), "proxyId is invalid");
-        sendChannelMessage("redisbungee-" + proxyId, command);
+        sendChannelMessage("redisbungee-command-" + proxyId, command);
+    }
+
+    void broadcastMessage(@NonNull BaseComponent... message) {
+        JsonObject jsonObject = new JsonObject();
+        jsonObject.addProperty("message", ComponentSerializer.toString(message));
+        sendChannelMessage("redisbungee-message-allservers", jsonObject.toString());
+    }
+
+    void sendChatMessage(@NonNull UUID uuid, @NonNull BaseComponent... message) {
+
+        ProxiedPlayer player = ProxyServer.getInstance().getPlayer(uuid);
+        if (player != null) {
+            player.sendMessage(new TextComponent(message));
+            return;
+        }
+        String server = getDataManager().getServer(uuid);
+
+        if (server == null) {
+            return;
+        }
+
+        JsonObject jsonObject = new JsonObject();
+        jsonObject.addProperty("receiver", uuid.toString());
+        jsonObject.addProperty("message", ComponentSerializer.toString(message));
+        sendChannelMessage("redisbungee-message-" + server, jsonObject.toString());
     }
 
     void sendChannelMessage(String channel, String message) {
+        getLogger().info("Sending message in channel '" + channel + "' with message '" + message + "'");
         try (Jedis jedis = pool.getResource()) {
             jedis.publish(channel, message);
         } catch (JedisConnectionException e) {
@@ -303,10 +338,11 @@ public final class RedisBungee extends Plugin {
                 getProxy().getPluginManager().registerCommand(this, new RedisBungeeCommands.FindCommand(this));
                 getProxy().getPluginManager().registerCommand(this, new RedisBungeeCommands.LastSeenCommand(this));
                 getProxy().getPluginManager().registerCommand(this, new RedisBungeeCommands.IpCommand(this));
+                getProxy().getPluginManager().registerCommand(this, new RedisBungeeCommands.AlertCommand());
+                getProxy().getPluginManager().registerCommand(this, new RedisBungeeCommands.AlertRawCommand());
             }
 
             getProxy().getPluginManager().registerCommand(this, new RedisBungeeCommands.SendToAll(this));
-            getProxy().getPluginManager().registerCommand(this, new RedisBungeeCommands.ServerId(this));
             getProxy().getPluginManager().registerCommand(this, new RedisBungeeCommands.ServerIds());
             getProxy().getPluginManager().registerCommand(this, new RedisBungeeCommands.PlayerProxyCommand(this));
             getProxy().getPluginManager().registerCommand(this, new RedisBungeeCommands.PlistCommand(this));
@@ -534,8 +570,11 @@ public final class RedisBungee extends Plugin {
             try (Jedis rsc = pool.getResource()) {
                 try {
                     jpsh = new JedisPubSubHandler();
-                    addedChannels.add("redisbungee-" + configuration.getServerId());
-                    addedChannels.add("redisbungee-allservers");
+                    addedChannels.add("redisbungee-command-" + configuration.getServerId());
+                    addedChannels.add("redisbungee-command-allservers");
+                    addedChannels.add("redisbungee-message-" + configuration.getServerId());
+                    addedChannels.add("redisbungee-message-allservers");
+                    addedChannels.add("redisbungee-send");
                     addedChannels.add("redisbungee-data");
                     rsc.subscribe(jpsh, addedChannels.toArray(new String[0]));
                 } catch (Exception e) {
