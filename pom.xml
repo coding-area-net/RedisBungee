@@ -6,7 +6,7 @@
 
     <groupId>com.imaginarycode.minecraft</groupId>
     <artifactId>RedisBungee</artifactId>
-    <version>0.6.6</version>
+    <version>0.6.7</version>
 
     <inceptionYear>2013</inceptionYear>
 
@@ -24,9 +24,9 @@
 
     <distributionManagement>
         <repository>
-            <id>github</id>
-            <name>RedisBungee | CodingArea</name>
-            <url>https://maven.pkg.github.com/coding-area-net/RedisBungee</url>
+            <id>github-codingarea</id>
+            <name>RedisBungee</name>
+            <url>https://maven.pkg.github.com/coding-area-net/redisbungee</url>
         </repository>
     </distributionManagement>
 
