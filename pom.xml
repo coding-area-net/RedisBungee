@@ -22,14 +22,6 @@
         </repository>
     </repositories>
 
-    <distributionManagement>
-        <repository>
-            <id>github-codingarea</id>
-            <name>RedisBungee</name>
-            <url>https://maven.pkg.github.com/coding-area-net/redisbungee</url>
-        </repository>
-    </distributionManagement>
-
     <dependencies>
         <dependency>
             <groupId>io.github.waterfallmc</groupId>
