@@ -20,10 +20,12 @@ import net.md_5.bungee.api.connection.ProxiedPlayer;
 import net.md_5.bungee.api.event.ServerConnectEvent;
 import net.md_5.bungee.api.plugin.Command;
 
+import java.lang.reflect.Array;
 import java.net.InetAddress;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import net.md_5.bungee.api.plugin.TabExecutor;
 import net.md_5.bungee.chat.ComponentSerializer;
@@ -324,6 +326,33 @@ class RedisBungeeCommands {
 		public void execute(final CommandSender sender, final String[] args) {
 			plugin.getProxy().getScheduler().runAsync(plugin, () -> {
 				String proxy = args.length >= 1 ? args[0] : RedisBungee.getConfiguration().getServerId();
+
+				if (proxy.equals("showall")) {
+
+					for (String server : RedisBungeeAPI.getRedisBungeeApi().getAllServers()) {
+						Set<UUID> playersOnProxy = RedisBungeeAPI.getRedisBungeeApi().getPlayersOnProxy(server);
+
+						Multimap<String, String> human = HashMultimap.create();
+
+						for (UUID uuid : playersOnProxy) {
+							human.put(server, plugin.getUuidTranslator().getNameFromUuid(uuid, false));
+						}
+
+						TextComponent serverName = new TextComponent();
+						serverName.setColor(ChatColor.GOLD);
+						serverName.setText("[" + server + "] ");
+						TextComponent serverCount = new TextComponent();
+						serverCount.setColor(ChatColor.YELLOW);
+						serverCount.setText("(" + human.get(server).size() + "): ");
+						TextComponent serverPlayers = new TextComponent();
+						serverPlayers.setColor(ChatColor.WHITE);
+						serverPlayers.setText(Joiner.on(", ").join(human.get(server)));
+						sender.sendMessage(serverName, serverCount, serverPlayers);
+					}
+
+					return;
+				}
+
 				if (!plugin.getServerIds().contains(proxy)) {
 					sender.sendMessage(new ComponentBuilder(
 							proxy + " ist keine gültige Proxy. Benutze /serverids für gültigen Proxys.")
@@ -332,7 +361,7 @@ class RedisBungeeCommands {
 				}
 				Set<UUID> players = RedisBungeeAPI.getRedisBungeeApi().getPlayersOnProxy(proxy);
 				BaseComponent[] playersOnline = new ComponentBuilder("").color(ChatColor.YELLOW)
-						.append(playerPlural(players.size()) + " derzeit auf Proxy " + proxy + ".").create();
+						.append(playerPlural(players.size()) + " derzeit auf " + proxy + ".").create();
 				if (args.length >= 2 && args[1].equals("showall")) {
 					Multimap<String, UUID> serverToPlayers = RedisBungeeAPI.getRedisBungeeApi()
 							.getServerToPlayers();
@@ -357,10 +386,12 @@ class RedisBungeeCommands {
 					}
 					sender.sendMessage(playersOnline);
 				} else {
-					sender.sendMessage(playersOnline);
-					sender.sendMessage(new ComponentBuilder(
-							"Um alle online Spieler zu sehen, benutze /plist " + proxy + " showall.")
-							.color(ChatColor.YELLOW).create());
+						sender.sendMessage(playersOnline);
+						sender.sendMessage(new ComponentBuilder(
+								"Um alle online Spieler zu sehen, benutze /plist " + proxy + " showall.")
+								.color(ChatColor.YELLOW).create());
+
+
 				}
 			});
 		}
@@ -369,7 +400,7 @@ class RedisBungeeCommands {
 		public Iterable<String> onTabComplete(CommandSender commandSender, String[] strings) {
 			return strings.length > 1 ?
 					(strings.length > 2 ? Collections.emptyList() : Collections.singletonList("showall")) :
-					RedisBungeeAPI.getRedisBungeeApi().getAllServers();
+					Stream.concat(RedisBungeeAPI.getRedisBungeeApi().getAllServers().stream(), Stream.of("showall")).collect(Collectors.toList());
 		}
 
 	}
@@ -474,6 +505,143 @@ class RedisBungeeCommands {
 		@Override
 		public Iterable<String> onTabComplete(CommandSender commandSender, String[] strings) {
 			return Collections.emptyList();
+		}
+
+	}
+
+	public static class SendCommand extends Command implements TabExecutor {
+
+		protected static class SendCallback {
+
+			private final Map<ServerConnectRequest.Result, List<String>> results = new HashMap<>();
+			private final CommandSender sender;
+			private int count = 0;
+
+			public SendCallback(CommandSender sender) {
+				this.sender = sender;
+				for (ServerConnectRequest.Result result : ServerConnectRequest.Result.values()) {
+					results.put(result, new ArrayList<>());
+				}
+			}
+
+			public void lastEntryDone() {
+				sender.sendMessage(ChatColor.GREEN.toString() + ChatColor.BOLD + "Send Results:");
+				for (Map.Entry<ServerConnectRequest.Result, List<String>> entry : results.entrySet()) {
+					ComponentBuilder builder = new ComponentBuilder("");
+					if (!entry.getValue().isEmpty()) {
+						builder.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+								new ComponentBuilder(Joiner.on(", ").join(entry.getValue())).color(ChatColor.YELLOW).create()));
+					}
+					builder.append(entry.getKey().name() + ": ").color(ChatColor.GREEN);
+					builder.append("" + entry.getValue().size()).bold(true);
+					sender.sendMessage(builder.create());
+				}
+			}
+
+			public static class Entry implements Callback<ServerConnectRequest.Result> {
+
+				private final SendCallback callback;
+				private final ProxiedPlayer player;
+				private final ServerInfo target;
+
+				public Entry(SendCallback callback, ProxiedPlayer player, ServerInfo target) {
+					this.callback = callback;
+					this.player = player;
+					this.target = target;
+					this.callback.count++;
+				}
+
+				@Override
+				public void done(ServerConnectRequest.Result result, Throwable error) {
+					callback.results.get(result).add(player.getName());
+					if (result == ServerConnectRequest.Result.SUCCESS) {
+						player.sendMessage(ProxyServer.getInstance().getTranslation("you_got_summoned", target.getName(), callback.sender.getName()));
+					}
+
+					if (--callback.count == 0) {
+						callback.lastEntryDone();
+					}
+				}
+			}
+		}
+
+		public SendCommand() {
+			super("send", "redisbungee.command.send");
+		}
+
+		@Override
+		public void execute(CommandSender sender, String[] args) {
+			if (args.length != 2) {
+				sender.sendMessage(ProxyServer.getInstance().getTranslation("send_cmd_usage"));
+				return;
+			}
+			ServerInfo server = ProxyServer.getInstance().getServerInfo(args[1]);
+			if (server == null) {
+				sender.sendMessage(ProxyServer.getInstance().getTranslation("no_server"));
+				return;
+			}
+
+			List<UUID> targets;
+			if (args[0].equalsIgnoreCase("all")) {
+				targets = new ArrayList<>(RedisBungeeAPI.getRedisBungeeApi().getPlayersOnline());
+			} else if (args[0].equalsIgnoreCase("current")) {
+				if (!(sender instanceof ProxiedPlayer)) {
+					sender.sendMessage(ProxyServer.getInstance().getTranslation("player_only"));
+					return;
+				}
+				ProxiedPlayer player = (ProxiedPlayer) sender;
+				targets = new ArrayList<>(RedisBungeeAPI.getRedisBungeeApi().getPlayersOnServer(player.getServer().getInfo().getName()));
+			} else {
+				// If we use a server name, send the entire server. This takes priority over players.
+				ServerInfo serverTarget = ProxyServer.getInstance().getServerInfo(args[0]);
+				if (serverTarget != null) {
+					targets = new ArrayList<>(RedisBungeeAPI.getRedisBungeeApi().getPlayersOnServer(serverTarget.getName()));
+				} else {
+					UUID uuid = RedisBungeeAPI.getRedisBungeeApi().getUuidFromName(args[0]);
+					if (uuid == null) {
+						sender.sendMessage(ProxyServer.getInstance().getTranslation("user_not_online"));
+						return;
+					}
+					targets = Collections.singletonList(uuid);
+				}
+			}
+
+			for (UUID target : targets) {
+				RedisBungeeAPI.getRedisBungeeApi().sendPlayerToServer(target, server.getName());
+			}
+
+			sender.sendMessage(ChatColor.DARK_GREEN + "Attempting to send " + targets.size() + " players to " + server.getName());
+		}
+
+		@Override
+		public Iterable<String> onTabComplete(CommandSender sender, String[] args) {
+			if (args.length > 2 || args.length == 0) {
+				return ImmutableSet.of();
+			}
+
+			Set<String> matches = new HashSet<>();
+			if (args.length == 1) {
+				String search = args[0].toLowerCase(Locale.ROOT);
+				for (String playerName : RedisBungeeAPI.getRedisBungeeApi().getHumanPlayersOnline()) {
+					if (playerName.toLowerCase(Locale.ROOT).startsWith(search)) {
+						matches.add(playerName);
+					}
+				}
+				if ("all".startsWith(search)) {
+					matches.add("all");
+				}
+				if ("current".startsWith(search)) {
+					matches.add("current");
+				}
+			} else {
+				String search = args[1].toLowerCase(Locale.ROOT);
+				for (String server : ProxyServer.getInstance().getServers().keySet()) {
+					if (server.toLowerCase(Locale.ROOT).startsWith(search)) {
+						matches.add(server);
+					}
+				}
+			}
+			return matches;
 		}
 
 	}
