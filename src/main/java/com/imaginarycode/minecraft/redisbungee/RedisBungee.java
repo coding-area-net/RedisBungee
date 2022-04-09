@@ -8,7 +8,6 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
 import com.google.common.io.ByteStreams;
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.imaginarycode.minecraft.redisbungee.events.PubSubMessageEvent;
 import com.imaginarycode.minecraft.redisbungee.util.IOUtil;
@@ -25,6 +24,7 @@ import lombok.NonNull;
 import net.md_5.bungee.api.ProxyServer;
 import net.md_5.bungee.api.chat.BaseComponent;
 import net.md_5.bungee.api.chat.TextComponent;
+import net.md_5.bungee.api.config.ServerInfo;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 import net.md_5.bungee.api.plugin.Plugin;
 import net.md_5.bungee.chat.ComponentSerializer;
@@ -230,16 +230,37 @@ public final class RedisBungee extends Plugin {
             player.sendMessage(new TextComponent(message));
             return;
         }
-        String server = getDataManager().getServer(uuid);
+        String proxy = getDataManager().getProxy(uuid);
 
-        if (server == null) {
+        if (proxy == null) {
             return;
         }
 
         JsonObject jsonObject = new JsonObject();
         jsonObject.addProperty("receiver", uuid.toString());
         jsonObject.addProperty("message", ComponentSerializer.toString(message));
-        sendChannelMessage("redisbungee-message-" + server, jsonObject.toString());
+        sendChannelMessage("redisbungee-message-" + proxy, jsonObject.toString());
+    }
+
+    void sendPlayerToServer(@NonNull UUID uuid, String server) {
+        ProxiedPlayer player = ProxyServer.getInstance().getPlayer(uuid);
+        if (player != null) {
+            ServerInfo serverInfo = ProxyServer.getInstance().getServerInfo(server);
+            if (serverInfo != null) {
+                player.connect(serverInfo);
+            }
+            return;
+        }
+        String proxy = getDataManager().getProxy(uuid);
+
+        if (proxy == null) {
+            return;
+        }
+
+        JsonObject jsonObject = new JsonObject();
+        jsonObject.addProperty("player", uuid.toString());
+        jsonObject.addProperty("server", server);
+        sendChannelMessage("redisbungee-send-" + proxy, jsonObject.toString());
     }
 
     void sendChannelMessage(String channel, String message) {
@@ -340,6 +361,7 @@ public final class RedisBungee extends Plugin {
                 getProxy().getPluginManager().registerCommand(this, new RedisBungeeCommands.IpCommand(this));
                 getProxy().getPluginManager().registerCommand(this, new RedisBungeeCommands.AlertCommand());
                 getProxy().getPluginManager().registerCommand(this, new RedisBungeeCommands.AlertRawCommand());
+                getProxy().getPluginManager().registerCommand(this, new RedisBungeeCommands.SendCommand());
             }
 
             getProxy().getPluginManager().registerCommand(this, new RedisBungeeCommands.SendToAll(this));
@@ -574,6 +596,8 @@ public final class RedisBungee extends Plugin {
                     addedChannels.add("redisbungee-command-allservers");
                     addedChannels.add("redisbungee-message-" + configuration.getServerId());
                     addedChannels.add("redisbungee-message-allservers");
+                    addedChannels.add("redisbungee-send-" + configuration.getServerId());
+                    addedChannels.add("redisbungee-send-allservers");
                     addedChannels.add("redisbungee-send");
                     addedChannels.add("redisbungee-data");
                     rsc.subscribe(jpsh, addedChannels.toArray(new String[0]));

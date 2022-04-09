@@ -293,7 +293,6 @@ public class RedisBungeeListener implements Listener {
             plugin.getLogger().info("Aufrufen eines PubSub Befehls: /" + message);
             plugin.getProxy().getPluginManager().dispatchCommand(RedisBungeeCommandSender.instance, message);
         } else if (channel.equals("redisbungee-message-allservers") || channel.equals("redisbungee-message-" + RedisBungeeAPI.getRedisBungeeApi().getServerId())) {
-            plugin.getLogger().info("Receiving pub chat message");
 
             JSONObject jsonObject = new JSONObject(event.getMessage());
             ProxiedPlayer receiver = null;
@@ -314,6 +313,21 @@ public class RedisBungeeListener implements Listener {
                 receiver.sendMessage(components);
             }
 
+        } else if (channel.equals("redisbungee-send-allservers") || channel.equals("redisbungee-send-" + RedisBungeeAPI.getRedisBungeeApi().getServerId())) {
+            JSONObject jsonObject = new JSONObject(event.getMessage());
+            UUID uuid = UUID.fromString(jsonObject.getString("player"));
+            ProxiedPlayer player = ProxyServer.getInstance().getPlayer(uuid);
+            if (player == null) {
+                return; // Player not on this proxy
+            }
+
+            String server = jsonObject.getString("server");
+            ServerInfo serverInfo = ProxyServer.getInstance().getServerInfo(server);
+            if (serverInfo == null) {
+                return; // Server doesn't exist
+            }
+            player.connect(serverInfo);
         }
+
     }
 }

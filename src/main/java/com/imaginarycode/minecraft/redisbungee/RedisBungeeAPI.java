@@ -183,6 +183,10 @@ public class RedisBungeeAPI {
         plugin.sendChatMessage(uuid, message);
     }
 
+    public final void sendPlayerToServer(@NonNull UUID uuid, String server) {
+        plugin.sendPlayerToServer(uuid, server);
+    }
+
     /**
      * Sends a message to a PubSub channel. The channel has to be subscribed to on this, or another redisbungee instance for {@link com.imaginarycode.minecraft.redisbungee.events.PubSubMessageEvent} to fire.
      *
